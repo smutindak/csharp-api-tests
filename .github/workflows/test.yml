@@ -1,0 +1,71 @@
+name: API Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qauser
+          POSTGRES_PASSWORD: qapass
+          POSTGRES_DB: qadb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Seed database
+        run: |
+          sudo apt-get install -y postgresql-client
+          psql postgresql://qauser:qapass@localhost:5432/qadb << 'SQL'
+          CREATE TABLE users (
+              id SERIAL PRIMARY KEY,
+              name VARCHAR(100) NOT NULL,
+              email VARCHAR(100) UNIQUE NOT NULL,
+              role VARCHAR(50) DEFAULT 'user',
+              is_active BOOLEAN DEFAULT true,
+              created_at TIMESTAMP DEFAULT NOW()
+          );
+          INSERT INTO users (name, email, role) VALUES
+              ('Alice Kamau', 'alice@example.com', 'admin'),
+              ('Bob Otieno', 'bob@example.com', 'user'),
+              ('Carol Wanjiku', 'carol@example.com', 'user');
+          SQL
+
+      - name: Run tests
+        run: dotnet test --no-build --logger "console;verbosity=detailed"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            **/*.trx
+            **/TestResults/
