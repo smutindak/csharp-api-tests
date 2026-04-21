@@ -61,13 +61,15 @@ jobs:
           SQL
 
       - name: Run tests
-        run: dotnet test --no-build --logger "console;verbosity=detailed"
+        run: |
+          dotnet test --no-build \
+            --logger "console;verbosity=detailed" \
+            --logger "trx;LogFileName=test-results.trx" \
+            --results-directory ./TestResults
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: |
-            **/*.trx
-            **/TestResults/
+          path: ./TestResults/test-results.trx
