@@ -20,7 +20,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U qauser -d qadb"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -41,9 +41,11 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Seed database
+        env:
+          PGPASSWORD: qapass
         run: |
           sudo apt-get install -y postgresql-client
-          psql postgresql://qauser:qapass@localhost:5432/qadb << 'SQL'
+          psql -h localhost -U qauser -d qadb << 'SQL'
           CREATE TABLE users (
               id SERIAL PRIMARY KEY,
               name VARCHAR(100) NOT NULL,
